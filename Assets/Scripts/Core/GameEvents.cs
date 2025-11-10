@@ -25,6 +25,14 @@ public class GameEvents : MonoBehaviour
                     gameLost.SetValueAndForceNotify(true);
             })
             .AddTo(subscriptions);
+
+        // Log gameLost changes for debugging
+        gameLost.ObserveEveryValueChanged(x => x.Value)
+            .Subscribe(value =>
+            {
+                Debug.Log($"[GameEvents] gameLost changed -> {value}");
+            })
+            .AddTo(subscriptions);
     }
     private void OnDisable()
     {

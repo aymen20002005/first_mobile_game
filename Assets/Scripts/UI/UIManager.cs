@@ -65,6 +65,12 @@ public class UIManager : MonoBehaviour
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
+    private IEnumerator DelayedGameStart()
+    {
+        yield return new WaitForSeconds(0.1f); // Small delay to ensure all resets are processed
+        GameEvents.instance.gameStarted.SetValueAndForceNotify(true);
+    }
+
     public void NextLevel()
     {
         int newCurrentLevel = PlayerPrefs.GetInt("currentLevel", 1) + 1;
@@ -77,5 +83,46 @@ public class UIManager : MonoBehaviour
         PlayerPrefs.SetInt("loadingLevel", newLoadingLevel);
 
         SceneManager.LoadScene(newLoadingLevel);
+    }
+
+    // Called by a "Try Again" button that resets the current run without reloading the scene
+    public void TryAgain()
+    {
+        if (GameEvents.instance == null) return;
+
+        Debug.Log("[UIManager] TryAgain called: resetting game state...");
+        
+        StartCoroutine(ResetGameState());
+    }
+
+    private IEnumerator ResetGameState()
+    {
+        // First reset game flags to ensure ad system recognizes the game is no longer in lost state
+        GameEvents.instance.gameWon.SetValueAndForceNotify(false);
+        GameEvents.instance.gameLost.SetValueAndForceNotify(false);
+        
+        yield return new WaitForSeconds(0.1f);
+
+        // Then reset AdsManager to ensure it's ready for the next loss
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.ResetForRetry();
+            Debug.Log("[UIManager] AdsManager state reset for retry.");
+        }
+
+        yield return new WaitForSeconds(0.1f);
+
+        // Reset UI to gameplay
+        ActivateMenu(gameUI);
+
+        // Reset player size
+        GameEvents.instance.playerSize.Value = 1;
+
+        yield return new WaitForSeconds(0.1f);
+
+        // Finally start the game
+        GameEvents.instance.gameStarted.SetValueAndForceNotify(true);
+
+        Debug.Log("[UIManager] Game state reset complete.");
     }
 }
